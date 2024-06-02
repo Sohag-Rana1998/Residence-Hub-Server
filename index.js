@@ -71,6 +71,40 @@ async function run() {
       const result = await propertiesCollection.find().toArray()
       res.send(result)
     })
+
+
+    app.get('/verified-properties', async (req, res) => {
+      const status = req.query.status;
+      const page = parseInt(req.query.page) - 1;
+      const size = parseInt(req.query.size);
+      const search = req.query.search;
+      let query = {
+        status: status
+      };
+      if (search) query = {
+        title: { $regex: search, $options: 'i' },
+        status: status
+      }
+      const result = await propertiesCollection.find(query).skip(page * size).limit(size).toArray();
+
+      res.send(result)
+    })
+
+    // Get  count 
+    app.get('/count-properties', async (req, res) => {
+      const status = req.query.status;
+      const search = req.query.search
+      let query = {
+        status: status
+      };
+      if (search) query = {
+        title: { $regex: search, $options: 'i' },
+        status: status
+      }
+      const count = await propertiesCollection.countDocuments(query)
+      res.send({ count })
+    })
+
     app.get('/property/:id', async (req, res) => {
       const id = req.params.id;
       const query = {
@@ -123,7 +157,6 @@ async function run() {
       if (user) {
         return res.send({ message: 'User already created' })
       }
-
       const result = await allUsersCollection.insertOne(userInfo);
       res.send(result)
     })
@@ -149,24 +182,32 @@ async function run() {
 
     // Change Property Status
     app.patch('/property/status/:id', async (req, res) => {
-      const userRole = req.body;
+      const propertyStatus = req.body;
       const id = req.params.id;
-      console.log(id);
-      console.log(userRole.role);
       const filter = { _id: new ObjectId(id) };
-
       const updatedDoc = {
         $set: {
-          role: userRole?.role
+          status: propertyStatus?.status
         }
       }
 
-      const result = await allUsersCollection.updateOne(filter, updatedDoc);
+      const result = await propertiesCollection.updateOne(filter, updatedDoc);
       res.send(result);
     })
 
 
+    // get user by email
 
+    app.get('/user', async (req, res) => {
+      const email = req.query.email;
+      console.log(email);
+      const query = {
+        email: email
+      }
+      const result = await allUsersCollection.findOne(query)
+      console.log(result);
+      res.send(result);
+    })
 
 
     // delete user
@@ -188,9 +229,6 @@ async function run() {
       const result = await propertiesCollection.deleteOne(query)
       res.send(result)
     })
-
-
-
 
 
 
