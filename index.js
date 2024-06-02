@@ -28,7 +28,7 @@ async function run() {
   try {
     // Connect the client to the server	(optional starting in v4.7)
     await client.connect();
-    const usersCollection = client.db("RealStateDb").collection("users");
+    const allUsersCollection = client.db("RealStateDb").collection("allUsers");
     const propertiesCollection = client.db("RealStateDb").collection("properties");
 
     // jwt related api
@@ -66,8 +66,17 @@ async function run() {
       next();
     }
 
+
     app.get('/properties', async (req, res) => {
       const result = await propertiesCollection.find().toArray()
+      res.send(result)
+    })
+    app.get('/property/:id', async (req, res) => {
+      const id = req.params.id;
+      const query = {
+        _id: new ObjectId(id)
+      }
+      const result = await propertiesCollection.findOne(query)
       res.send(result)
     })
 
@@ -77,6 +86,100 @@ async function run() {
       res.send(result)
     })
 
+
+    // update a property in db
+    app.put('/property/:id', async (req, res) => {
+      const id = req.params.id
+      const jobData = req.body
+      const query = { _id: new ObjectId(id) }
+      const options = { upsert: true }
+      const updateDoc = {
+        $set: {
+          ...jobData,
+        },
+      }
+      const result = await propertiesCollection.updateOne(query, updateDoc, options)
+      res.send(result)
+    })
+
+
+
+    // get all users
+    app.get('/users', async (req, res) => {
+      console.log('all-user');
+      const result = await allUsersCollection.find().toArray();
+      res.send(result)
+    })
+
+
+
+    // save user in userCollection
+    app.post('/users', async (req, res) => {
+      const userInfo = req.body;
+      const query = {
+        email: userInfo?.email
+      }
+      const user = await allUsersCollection.findOne(query);
+      if (user) {
+        return res.send({ message: 'User already created' })
+      }
+
+      const result = await allUsersCollection.insertOne(userInfo);
+      res.send(result)
+    })
+
+
+    //  Change User Role
+    app.patch('/users/role/:id', async (req, res) => {
+      const userRole = req.body;
+      const id = req.params.id;
+      console.log(id);
+      console.log(userRole.role);
+      const filter = { _id: new ObjectId(id) };
+
+      const updatedDoc = {
+        $set: {
+          role: userRole?.role
+        }
+      }
+
+      const result = await allUsersCollection.updateOne(filter, updatedDoc);
+      res.send(result);
+    })
+
+    // Change Property Status
+    app.patch('/property/status/:id', async (req, res) => {
+      const userRole = req.body;
+      const id = req.params.id;
+      console.log(id);
+      console.log(userRole.role);
+      const filter = { _id: new ObjectId(id) };
+
+      const updatedDoc = {
+        $set: {
+          role: userRole?.role
+        }
+      }
+
+      const result = await allUsersCollection.updateOne(filter, updatedDoc);
+      res.send(result);
+    })
+
+
+
+
+
+    // delete user
+    app.delete('/user/:id', async (req, res) => {
+      const id = req.params.id;
+      const query = {
+        _id: new ObjectId(id)
+      }
+      const result = await allUsersCollection.deleteOne(query)
+      res.send(result)
+    })
+
+    // delete property
     app.delete('/property/:id', async (req, res) => {
       const id = req.params.id;
       const query = {
