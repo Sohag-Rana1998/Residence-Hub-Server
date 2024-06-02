@@ -30,6 +30,8 @@ async function run() {
     await client.connect();
     const allUsersCollection = client.db("RealStateDb").collection("allUsers");
     const propertiesCollection = client.db("RealStateDb").collection("properties");
+    const wishlistCollection = client.db("RealStateDb").collection("wishlist");
+    const reviewsCollection = client.db("RealStateDb").collection("reviews");
 
     // jwt related api
     app.post('/jwt', async (req, res) => {
@@ -120,6 +122,44 @@ async function run() {
       res.send(result)
     })
 
+    // add to wishlist
+    app.post('/wishlist-property', async (req, res) => {
+      const propertyData = req.body;
+      const query = {
+        propertyId: propertyData?.propertyId
+      }
+      const property = await wishlistCollection.findOne(query);
+
+      if (property) {
+        return res.send({ message: 'Property already added to your wishlist' })
+      }
+
+      const result = await wishlistCollection.insertOne(propertyData);
+      res.send(result)
+
+
+    })
+
+    // get reviews by property
+    app.get('/reviews', async (req, res) => {
+      const id = req.query.id;
+      console.log('reviews', id);
+      const query = {
+
+        propertyId: id
+      }
+      const result = await reviewsCollection.find(query).toArray();
+      res.send(result)
+    })
+
+
+    // add  reviews
+    app.post('/add-review', async (req, res) => {
+      const review = req.body;
+      const result = await reviewsCollection.insertOne(review)
+      res.send(result)
+    })
+
 
     // update a property in db
     app.put('/property/:id', async (req, res) => {
@@ -160,6 +200,8 @@ async function run() {
       const result = await allUsersCollection.insertOne(userInfo);
       res.send(result)
     })
+
+
 
 
     //  Change User Role
