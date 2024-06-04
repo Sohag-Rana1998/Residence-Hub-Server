@@ -63,7 +63,7 @@ async function run() {
       const email = req.decoded.email;
       const query = { email: email };
       const user = await userCollection.findOne(query);
-      const isAdmin = user?.role === 'admin';
+      const isAdmin = user?.role === 'Admin';
       if (!isAdmin) {
         return res.status(403).send({ message: 'forbidden access' });
       }
@@ -364,6 +364,16 @@ async function run() {
     })
 
 
+    // offered and accepted property 
+    app.get('/payment-property/:id', async (req, res) => {
+      const id = req.params.id;
+      const query = {
+        _id: new ObjectId(id)
+      }
+      const result = await offeredPropertyCollection.findOne(query)
+      res.send(result)
+    })
+
     // delete user
     app.delete('/user/:id', async (req, res) => {
       const id = req.params.id;
@@ -405,6 +415,55 @@ async function run() {
 
 
 
+    // app.get('/payments/:email',  async (req, res) => {
+    //   const query = { email: req.params.email }
+    //   if (req.params.email !== req.decoded.email) {
+    //     return res.status(403).send({ message: 'forbidden access' });
+    //   }
+    //   const result = await paymentCollection.find(query).toArray();
+    //   res.send(result);
+    // })
+
+    app.post('/payments', async (req, res) => {
+      const payment = req.body;
+      const paymentResult = await offeredPropertyCollection.insertOne(payment);
+      console.log(payment.boughtId);
+      //  carefully delete each item from the cart
+      console.log('payment info', payment);
+      const filter = {
+        _id: new ObjectId(payment.boughtId)
+      };
+      const updatedDoc = {
+        $set: {
+          status: 'Bought'
+        }
+      }
+
+      const updateResult = await offeredPropertyCollection.updateOne(filter, updatedDoc);
+
+      res.send({ paymentResult, updateResult });
+    })
+
+
+
+
+    // payment intent
+    app.post('/create-payment-intent', async (req, res) => {
+      const { price } = req.body;
+      console.log('create-payment-intent');
+      const amount = parseInt(price * 100);
+      console.log(amount, 'amount inside the intent')
+
+      const paymentIntent = await stripe.paymentIntents.create({
+        amount: amount,
+        currency: 'usd',
+        payment_method_types: ['card']
+      });
+      console.log(paymentIntent);
+      res.send({
+        clientSecret: paymentIntent.client_secret
+      })
+    });
 
 
 
