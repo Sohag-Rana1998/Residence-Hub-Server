@@ -32,6 +32,8 @@ async function run() {
     const propertiesCollection = client.db("RealStateDb").collection("properties");
     const wishlistCollection = client.db("RealStateDb").collection("wishlist");
     const reviewsCollection = client.db("RealStateDb").collection("reviews");
+    const boughtPropertyCollection = client.db("RealStateDb").collection("boughtProperty");
+    const offeredPropertyCollection = client.db("RealStateDb").collection("offeredProperty");
 
     // jwt related api
     app.post('/jwt', async (req, res) => {
@@ -71,6 +73,13 @@ async function run() {
 
     app.get('/properties', async (req, res) => {
       const result = await propertiesCollection.find().toArray()
+      res.send(result)
+    })
+
+
+    // all offered properties
+    app.get('/offered-properties', async (req, res) => {
+      const result = await offeredPropertyCollection.find().toArray()
       res.send(result)
     })
 
@@ -116,19 +125,83 @@ async function run() {
       res.send(result)
     })
 
+    //  get wishlist single data by id for make offer
+    app.get('/wishlist/:id', async (req, res) => {
+      const id = req.params.id;
+      const query = {
+        _id: new ObjectId(id)
+      }
+      const result = await wishlistCollection.findOne(query)
+      res.send(result)
+    })
+
     app.post('/add-property', async (req, res) => {
       const property = req.body;
       const result = await propertiesCollection.insertOne(property)
       res.send(result)
     })
 
+
+    app.post('/offered-property', async (req, res) => {
+      const propertyData = req.body;
+      const query = {
+        propertyId: propertyData?.propertyId,
+        buyerEmail: propertyData?.buyerEmail
+      }
+      const property = await offeredPropertyCollection.findOne(query);
+
+      if (property) {
+        return res.send({ message: 'You have already offered a price of this property' })
+      }
+      const result = await offeredPropertyCollection.insertOne(propertyData)
+      res.send(result)
+    })
+
+
+    // get wishlist data by query
+    app.get('/wishlist', async (req, res) => {
+      const email = req.query.email;
+      const query = {
+        buyerEmail: email
+      }
+      const result = await wishlistCollection.find(query).toArray();
+      res.send(result)
+    })
+
+    // get review data by query
+    app.get('/reviews', async (req, res) => {
+      const email = req.query.email;
+      const query = {
+        email: email
+      }
+      const result = await reviewsCollection.find(query).toArray();
+      res.send(result)
+    })
+
+    // get bought property data by query
+    app.get('/offered-property', async (req, res) => {
+      const email = req.query.email;
+      const query = {
+        buyerEmail: email
+      }
+      const result = await offeredPropertyCollection.find(query).toArray();
+      res.send(result)
+    })
+
+
+
+
     // add to wishlist
     app.post('/wishlist-property', async (req, res) => {
       const propertyData = req.body;
+      console.log("main", propertyData.buyerEmail);
       const query = {
-        propertyId: propertyData?.propertyId
+        propertyId: propertyData?.propertyId,
+        buyerEmail: propertyData?.buyerEmail
       }
+
       const property = await wishlistCollection.findOne(query);
+      console.log(property);
 
       if (property) {
         return res.send({ message: 'Property already added to your wishlist' })
@@ -141,9 +214,9 @@ async function run() {
     })
 
     // get reviews by property
-    app.get('/reviews', async (req, res) => {
-      const id = req.query.id;
-      console.log('reviews', id);
+    app.get('/reviews/:id', async (req, res) => {
+      const id = req.params.id;
+
       const query = {
 
         propertyId: id
@@ -238,6 +311,46 @@ async function run() {
     })
 
 
+
+
+
+    app.patch('/offered-property-action', async (req, res) => {
+      const properties = req.body;
+      const id = properties.id;
+      const status = properties.status;
+      const email = properties.buyerEmail;
+      const propertyId = properties.propertyId;
+      const filter = { _id: new ObjectId(id) };
+      const updatedDoc = { $set: { status: "Accepted" } };
+      const result = await offeredPropertyCollection.updateOne(filter, updatedDoc);
+      if (result.matchedCount === 0) {
+        return res.status(404).send({ message: 'Property not found or buyer email mismatch' });
+      }
+
+      const filter1 = {
+        propertyId: propertyId,
+        _id: { $ne: new ObjectId(id) },
+      };
+      const updateDoc1 = { $set: { status: 'Rejected' } };
+      const updateManyResult = await offeredPropertyCollection.updateMany(filter1, updateDoc1);
+      console.log(updateManyResult);
+      res.send({ message: 'Property status updated successfully' });
+    });
+
+
+    app.patch('/offer-reject', async (req, res) => {
+
+      const statusData = req.body;
+      const id = statusData.id;
+      const status = statusData.status
+      console.log(id);
+      const filter = {
+        _id: new ObjectId(id)
+      }
+      const updatedDoc = { $set: { status: status } };
+      const result = await offeredPropertyCollection.updateOne(filter, updatedDoc);
+      res.send(result)
+    })
     // get user by email
 
     app.get('/user', async (req, res) => {
@@ -247,7 +360,6 @@ async function run() {
         email: email
       }
       const result = await allUsersCollection.findOne(query)
-      console.log(result);
       res.send(result);
     })
 
@@ -269,6 +381,25 @@ async function run() {
         _id: new ObjectId(id)
       }
       const result = await propertiesCollection.deleteOne(query)
+      res.send(result)
+    })
+    // remove from wishlist
+    app.delete('/wishlist/:id', async (req, res) => {
+      const id = req.params.id;
+      const query = {
+        _id: new ObjectId(id)
+      }
+      const result = await wishlistCollection.deleteOne(query)
+      res.send(result)
+    })
+
+    // Delete review
+    app.delete('/review/:id', async (req, res) => {
+      const id = req.params.id;
+      const query = {
+        _id: new ObjectId(id)
+      }
+      const result = await reviewsCollection.deleteOne(query)
       res.send(result)
     })
 
