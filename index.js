@@ -32,6 +32,7 @@ async function run() {
     const propertiesCollection = client.db("RealStateDb").collection("properties");
     const wishlistCollection = client.db("RealStateDb").collection("wishlist");
     const reviewsCollection = client.db("RealStateDb").collection("reviews");
+    const paymentsCollection = client.db("RealStateDb").collection("payments");
     const boughtPropertyCollection = client.db("RealStateDb").collection("boughtProperty");
     const offeredPropertyCollection = client.db("RealStateDb").collection("offeredProperty");
 
@@ -75,6 +76,14 @@ async function run() {
       const result = await propertiesCollection.find().toArray()
       res.send(result)
     })
+    app.get('/agent-properties', async (req, res) => {
+      const email = req.query.email;
+      const query = {
+        agentEmail: email
+      }
+      const result = await propertiesCollection.find(query).toArray()
+      res.send(result)
+    })
 
 
     // all offered properties
@@ -114,6 +123,17 @@ async function run() {
       }
       const count = await propertiesCollection.countDocuments(query)
       res.send({ count })
+    })
+
+    // Get verified properties for advertise
+
+    app.get('/properties-to-advertise', async (req, res) => {
+      const query = {
+        status: req?.query?.status
+      }
+
+      const result = await propertiesCollection.find().toArray()
+      res.send(result)
     })
 
     app.get('/property/:id', async (req, res) => {
@@ -278,21 +298,31 @@ async function run() {
 
 
     //  Change User Role
-    app.patch('/users/role/:id', async (req, res) => {
-      const userRole = req.body;
-      const id = req.params.id;
-      console.log(id);
-      console.log(userRole.role);
+    app.patch('/users/role', async (req, res) => {
+      const user = req.body;
+      const id = user?.id;
+      const role = user?.role
+      const email = user?.email
+      console.log('gmail', email, id, role);
       const filter = { _id: new ObjectId(id) };
 
       const updatedDoc = {
         $set: {
-          role: userRole?.role
+          role: role
         }
       }
-
       const result = await allUsersCollection.updateOne(filter, updatedDoc);
-      res.send(result);
+
+      if (role === 'Fraud') {
+        const query = {
+          agentEmail: email
+        }
+        console.log(query);
+        const deleteResult = await propertiesCollection.deleteMany(query);
+        console.log(deleteResult);
+      }
+
+      res.send({ message: 'Role updated successfully' });
     })
 
     // Change Property Status
@@ -374,6 +404,38 @@ async function run() {
       res.send(result)
     })
 
+    // all reviews get
+    app.get('/all-reviews', async (req, res) => {
+      const result = await reviewsCollection.find().toArray();
+      res.send(result)
+    })
+
+    // Advertise property 
+    app.patch('/advertise-property', async (req, res) => {
+      const property = req.body;
+      console.log('advertise', property);
+      const filter = {
+        _id: new ObjectId(property?.id)
+      }
+      const updatedDoc = {
+        $set: {
+          advertise: property?.advertise
+        }
+      }
+      const result = await propertiesCollection.updateOne(filter, updatedDoc);
+      res.send(result)
+    })
+
+    // sold and paid property 
+    app.get('/sold-properties', async (req, res) => {
+      const email = req.query.email;
+      const query = {
+        agentEmail: email
+      }
+      const result = await paymentsCollection.find(query).toArray()
+      res.send(result)
+    })
+
     // delete user
     app.delete('/user/:id', async (req, res) => {
       const id = req.params.id;
@@ -426,16 +488,20 @@ async function run() {
 
     app.post('/payments', async (req, res) => {
       const payment = req.body;
-      const paymentResult = await offeredPropertyCollection.insertOne(payment);
+
+      const paymentResult = await paymentsCollection.insertOne(payment);
       console.log(payment.boughtId);
+      console.log('transactionId', payment.transactionId);
       //  carefully delete each item from the cart
       console.log('payment info', payment);
       const filter = {
         _id: new ObjectId(payment.boughtId)
       };
+
       const updatedDoc = {
         $set: {
-          status: 'Bought'
+          status: 'Bought',
+          transactionId: payment.transactionId
         }
       }
 
