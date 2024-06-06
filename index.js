@@ -32,6 +32,7 @@ async function run() {
     const propertiesCollection = client.db("RealStateDb").collection("properties");
     const wishlistCollection = client.db("RealStateDb").collection("wishlist");
     const reviewsCollection = client.db("RealStateDb").collection("reviews");
+    const reportsCollection = client.db("RealStateDb").collection("reports");
     const paymentsCollection = client.db("RealStateDb").collection("payments");
     const boughtPropertyCollection = client.db("RealStateDb").collection("boughtProperty");
     const offeredPropertyCollection = client.db("RealStateDb").collection("offeredProperty");
@@ -76,6 +77,7 @@ async function run() {
       const result = await propertiesCollection.find().toArray()
       res.send(result)
     })
+
     app.get('/agent-properties', async (req, res) => {
       const email = req.query.email;
       const query = {
@@ -85,6 +87,17 @@ async function run() {
       res.send(result)
     })
 
+    // get user by email
+    app.get('/logged-user-role', async (req, res) => {
+      const email = req.query.email;
+      console.log('logged user', email);
+      const query = {
+        email: email
+      }
+      const result = await allUsersCollection.findOne(query)
+      console.log(result);
+      res.send(result);
+    })
 
     // all offered properties
     app.get('/offered-properties', async (req, res) => {
@@ -125,16 +138,7 @@ async function run() {
       res.send({ count })
     })
 
-    // Get verified properties for advertise
 
-    app.get('/properties-to-advertise', async (req, res) => {
-      const query = {
-        status: req?.query?.status
-      }
-
-      const result = await propertiesCollection.find().toArray()
-      res.send(result)
-    })
 
     app.get('/property/:id', async (req, res) => {
       const id = req.params.id;
@@ -250,6 +254,14 @@ async function run() {
     app.post('/add-review', async (req, res) => {
       const review = req.body;
       const result = await reviewsCollection.insertOne(review)
+      res.send(result)
+    })
+
+
+    // add  report
+    app.post('/add-report', async (req, res) => {
+      const report = req.body;
+      const result = await reportsCollection.insertOne(report)
       res.send(result)
     })
 
@@ -381,17 +393,7 @@ async function run() {
       const result = await offeredPropertyCollection.updateOne(filter, updatedDoc);
       res.send(result)
     })
-    // get user by email
 
-    app.get('/user', async (req, res) => {
-      const email = req.query.email;
-      console.log(email);
-      const query = {
-        email: email
-      }
-      const result = await allUsersCollection.findOne(query)
-      res.send(result);
-    })
 
 
     // offered and accepted property 
@@ -407,6 +409,11 @@ async function run() {
     // all reviews get
     app.get('/all-reviews', async (req, res) => {
       const result = await reviewsCollection.find().toArray();
+      res.send(result)
+    })
+    //get all Reports
+    app.get('/all-reports', async (req, res) => {
+      const result = await reportsCollection.find().toArray();
       res.send(result)
     })
 
@@ -464,6 +471,33 @@ async function run() {
       const result = await wishlistCollection.deleteOne(query)
       res.send(result)
     })
+
+    // Delete reported-property
+    app.patch('/reported-property', async (req, res) => {
+      const ids = req.body;
+      const propertyId = ids.propertyId;
+      const id = ids.id;
+
+      const query = {
+        _id: new ObjectId(propertyId)
+      }
+      const result = await propertiesCollection.deleteOne(query)
+      const query1 = {
+        propertyId: propertyId
+      }
+      const result1 = await reviewsCollection.deleteMany(query1);
+      const filter = {
+        _id: new ObjectId(id)
+      }
+      const updatedDoc = {
+        $set: {
+          status: "Removed"
+        }
+      }
+      const result2 = await reportsCollection.updateOne(filter, updatedDoc);
+      res.send({ message: 'Property Removed Successfully' })
+    })
+
 
     // Delete review
     app.delete('/review/:id', async (req, res) => {
