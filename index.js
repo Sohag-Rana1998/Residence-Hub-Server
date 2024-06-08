@@ -106,20 +106,34 @@ async function run() {
     })
 
 
+    // 
+
+
     app.get('/verified-properties', async (req, res) => {
       const status = req.query.status;
       const page = parseInt(req.query.page) - 1;
       const size = parseInt(req.query.size);
       const search = req.query.search;
+      const maxPrice = parseInt(req.query.maxPrice);
+      const minPrice = parseInt(req.query.minPrice);
+      console.log(maxPrice, minPrice);
       let query = {
         status: status
       };
       if (search) query = {
-        title: { $regex: search, $options: 'i' },
+        location: { $regex: search, $options: 'i' },
         status: status
       }
-      const result = await propertiesCollection.find(query).skip(page * size).limit(size).toArray();
 
+      if (maxPrice > 0 && minPrice > 0) {
+        query = {
+
+          minimumPrice: { $gte: minPrice },
+          maximumPrice: { $lte: maxPrice }
+        }
+      }
+      const result = await propertiesCollection.find(query).skip(page * size).limit(size).toArray();
+      console.log('result');
       res.send(result)
     })
 
@@ -127,14 +141,26 @@ async function run() {
     app.get('/count-properties', async (req, res) => {
       const status = req.query.status;
       const search = req.query.search
+      const maxPrice = parseInt(req.query.maxPrice);
+      const minPrice = parseInt(req.query.minPrice);
+
       let query = {
         status: status
       };
       if (search) query = {
-        title: { $regex: search, $options: 'i' },
+        location: { $regex: search, $options: 'i' },
         status: status
       }
+      if (maxPrice > 0 && minPrice > 0) {
+        query = {
+
+          minimumPrice: { $gte: minPrice },
+          maximumPrice: { $lte: maxPrice }
+        }
+      }
+
       const count = await propertiesCollection.countDocuments(query)
+      console.log('count', count);
       res.send({ count })
     })
 
@@ -245,7 +271,7 @@ async function run() {
 
         propertyId: id
       }
-      const result = await reviewsCollection.find(query).toArray();
+      const result = await reviewsCollection.find(query).sort({ date: -1 }).toArray();
       res.send(result)
     })
 
