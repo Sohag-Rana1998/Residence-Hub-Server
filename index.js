@@ -106,7 +106,13 @@ async function run() {
     })
 
 
-    // 
+    // get advertised properties
+    app.get('/advertised-properties', async (req, res) => {
+      const status = req.query?.status;
+      const result = await propertiesCollection.find({ advertise: status }).toArray();
+      res.send(result)
+      console.log("adverties", result.length);
+    })
 
 
     app.get('/verified-properties', async (req, res) => {
