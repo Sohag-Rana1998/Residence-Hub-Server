@@ -323,6 +323,18 @@ async function run() {
     })
 
 
+    // get all agents
+    app.get('/agents', async (req, res) => {
+      const role = req.query.role;
+      console.log(role);
+      const query = {
+        role: role
+      }
+      const result = await allUsersCollection.find(query).toArray();
+      res.send(result)
+    })
+
+
 
     // save user in userCollection
     app.post('/users', async (req, res) => {
@@ -440,7 +452,7 @@ async function run() {
 
     // all reviews get
     app.get('/all-reviews', async (req, res) => {
-      const result = await reviewsCollection.find().toArray();
+      const result = await reviewsCollection.find().sort({ date: -1 }).toArray();
       res.send(result)
     })
     //get all Reports
