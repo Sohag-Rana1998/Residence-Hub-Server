@@ -9,13 +9,13 @@ const port = process.env.PORT || 5000;
 
 // middleware
 app.use(express.json());
-//Must remove "/" from your production URL
+
 app.use(
   cors({
     origin: [
       "http://localhost:5173",
       "https://real-state-project-63c9c.web.app",
-      "https://real-state-project-63c9c.firebaseapp.com",
+      "https://residence-hub-by-sohag.netlify.app",
     ]
   })
 );
@@ -36,7 +36,7 @@ const client = new MongoClient(uri, {
 async function run() {
   try {
     // Connect the client to the server	(optional starting in v4.7)
-    await client.connect();
+    // await client.connect();
     const allUsersCollection = client.db("RealStateDb").collection("allUsers");
     const propertiesCollection = client.db("RealStateDb").collection("properties");
     const wishlistCollection = client.db("RealStateDb").collection("wishlist");
@@ -76,6 +76,7 @@ async function run() {
       const query = { email: email };
       const user = await allUsersCollection.findOne(query);
       const isAdmin = user?.role === 'Admin';
+      console.log("verify admin", isAdmin);
       if (!isAdmin) {
         return res.status(403).send({ message: 'forbidden access' });
       }
@@ -88,6 +89,7 @@ async function run() {
       const query = { email: email };
       const user = await allUsersCollection.findOne(query);
       const isAgent = user?.role === 'Agent';
+      console.log("verify agent", isAgent);
       if (!isAgent) {
         return res.status(403).send({ message: 'forbidden access' });
       }
@@ -114,12 +116,10 @@ async function run() {
     // get user by email
     app.get('/logged-user-role', verifyToken, async (req, res) => {
       const email = req.query.email;
-      console.log('logged user', email);
       const query = {
         email: email
       }
       const result = await allUsersCollection.findOne(query)
-      console.log(result);
       res.send(result);
     })
 
@@ -151,7 +151,6 @@ async function run() {
       const search = req.query.search;
       const maxPrice = parseInt(req.query.maxPrice);
       const minPrice = parseInt(req.query.minPrice);
-      console.log(maxPrice, minPrice);
       let query = {
         status: status
       };
@@ -168,7 +167,6 @@ async function run() {
         }
       }
       const result = await propertiesCollection.find(query).skip(page * size).limit(size).toArray();
-      console.log('result');
       res.send(result)
     })
 
@@ -195,7 +193,7 @@ async function run() {
       }
 
       const count = await propertiesCollection.countDocuments(query)
-      console.log('count', count);
+      console.log(count);
       res.send({ count })
     })
 
@@ -284,7 +282,7 @@ async function run() {
         buyerEmail: propertyData?.buyerEmail
       }
       const property = await wishlistCollection.findOne(query);
-      console.log(property);
+      // console.log(property);
       if (property) {
         return res.send({ message: 'Property already added to your wishlist' })
       }
@@ -357,7 +355,7 @@ async function run() {
 
     // get all users for agent
     app.get('/users', verifyToken, verifyAdmin, async (req, res) => {
-      console.log('all-user');
+      // console.log('all-user');
       const result = await allUsersCollection.find().toArray();
       res.send(result)
     })
@@ -366,7 +364,7 @@ async function run() {
     // get all agents for public
     app.get('/agents', async (req, res) => {
       const role = req.query.role;
-      console.log(role);
+      // console.log(role);
       const query = {
         role: role
       }
@@ -399,7 +397,7 @@ async function run() {
       const id = user?.id;
       const role = user?.role
       const email = user?.email
-      console.log('gmail', email, id, role);
+      // console.log('gmail', email, id, role);
       const filter = { _id: new ObjectId(id) };
 
       const updatedDoc = {
@@ -413,9 +411,9 @@ async function run() {
         const query = {
           agentEmail: email
         }
-        console.log(query);
+        // console.log(query);
         const deleteResult = await propertiesCollection.deleteMany(query);
-        console.log(deleteResult);
+        // console.log(deleteResult);
       }
 
       res.send({ message: 'Role updated successfully' });
@@ -459,7 +457,7 @@ async function run() {
       };
       const updateDoc1 = { $set: { status: 'Rejected' } };
       const updateManyResult = await offeredPropertyCollection.updateMany(filter1, updateDoc1);
-      console.log(updateManyResult);
+      // console.log(updateManyResult);
       res.send({ message: 'Property status updated successfully' });
     });
 
@@ -469,7 +467,7 @@ async function run() {
       const statusData = req.body;
       const id = statusData.id;
       const status = statusData.status
-      console.log(id);
+      // console.log(id);
       const filter = {
         _id: new ObjectId(id)
       }
@@ -504,7 +502,7 @@ async function run() {
     // Advertise property 
     app.patch('/advertise-property', verifyToken, verifyAdmin, async (req, res) => {
       const property = req.body;
-      console.log('advertise', property);
+      // console.log('advertise', property);
       const filter = {
         _id: new ObjectId(property?.id)
       }
@@ -599,10 +597,10 @@ async function run() {
       const payment = req.body;
 
       const paymentResult = await paymentsCollection.insertOne(payment);
-      console.log(payment.boughtId);
-      console.log('transactionId', payment.transactionId);
+      // console.log(payment.boughtId);
+      // console.log('transactionId', payment.transactionId);
       //  carefully delete each item from the cart
-      console.log('payment info', payment);
+      // console.log('payment info', payment);
       const filter = {
         _id: new ObjectId(payment.boughtId)
       };
@@ -625,16 +623,16 @@ async function run() {
     // payment intent
     app.post('/create-payment-intent', verifyToken, async (req, res) => {
       const { price } = req.body;
-      console.log('create-payment-intent');
+      // console.log('create-payment-intent');
       const amount = parseInt(price * 100);
-      console.log(amount, 'amount inside the intent')
+      // console.log(amount, 'amount inside the intent')
 
       const paymentIntent = await stripe.paymentIntents.create({
         amount: amount,
         currency: 'usd',
         payment_method_types: ['card']
       });
-      console.log(paymentIntent);
+      // console.log(paymentIntent);
       res.send({
         clientSecret: paymentIntent.client_secret
       })
